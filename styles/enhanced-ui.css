@@ -1,0 +1,125 @@
+/* Enhanced UI Styles for LearnFlow */
+
+/* Custom gradient backgrounds */
+.bg-gradient-primary {
+  background: linear-gradient(
+    135deg,
+    hsl(var(--primary) / 0.1) 0%,
+    hsl(var(--accent) / 0.1) 100%
+  );
+}
+
+.bg-gradient-card {
+  background: linear-gradient(
+    135deg,
+    hsl(var(--background)) 0%,
+    hsl(var(--muted) / 0.3) 100%
+  );
+}
+
+.bg-gradient-chat {
+  background: linear-gradient(
+    135deg,
+    hsl(var(--background)) 0%,
+    hsl(var(--muted) / 0.3) 100%
+  );
+}
+
+.bg-gradient-header {
+  background: linear-gradient(
+    90deg,
+    hsl(var(--primary) / 0.1) 0%,
+    hsl(var(--accent) / 0.1) 100%
+  );
+}
+
+/* Animation enhancements */
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+.animate-slide-up {
+  animation: slideUp 0.4s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Grid pattern background */
+.bg-grid-pattern {
+  background-image: linear-gradient(
+      to right,
+      hsl(var(--border)) 1px,
+      transparent 1px
+    ),
+    linear-gradient(to bottom, hsl(var(--border)) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+/* Enhanced card styles */
+.card-enhanced {
+  @apply border border-border/50 bg-card/50 backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-300;
+}
+
+.card-interactive {
+  @apply hover:scale-[1.02] hover:border-primary/30 cursor-pointer;
+}
+
+/* Status indicators */
+.status-online {
+  @apply bg-green-500 shadow-lg shadow-green-500/25;
+}
+
+.status-offline {
+  @apply bg-red-500 shadow-lg shadow-red-500/25;
+}
+
+/* Progress bar enhancements */
+.progress-enhanced {
+  @apply bg-muted/50 overflow-hidden rounded-full;
+}
+
+.progress-fill {
+  @apply bg-linear-to-r from-primary to-accent transition-all duration-500 ease-out;
+}
+
+/* Message bubbles */
+.message-user {
+  @apply bg-primary text-primary-foreground rounded-2xl rounded-br-md shadow-md;
+}
+
+.message-ai {
+  @apply bg-muted/80 backdrop-blur-sm rounded-2xl rounded-bl-md border border-border/50 shadow-sm;
+}
+
+.message-system {
+  @apply bg-destructive/10 text-destructive border border-destructive/20 rounded-xl;
+}
+
+/* Task states */
+.task-completed {
+  @apply bg-green-50 border-green-200 shadow-sm dark:bg-green-900/10 dark:border-green-800;
+}
+
+.task-pending {
+  @apply bg-card border-border hover:border-primary/30 hover:shadow-md;
+}
