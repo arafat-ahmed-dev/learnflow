@@ -22,23 +22,10 @@ export async function POST(req: Request) {
       })
       .eq("id", taskId)
       .eq("user_id", user.id)
-      .select(
-        `
-        *,
-        video:videos(title, video_id, duration_seconds)
-      `
-      )
+      .select()
       .single();
 
     if (error) throw error;
-
-    // Note: In a real implementation, you would emit Socket.io events here
-    // For now, the client-side handles the real-time updates
-    console.log(
-      `[Task Update] User ${user.id} ${
-        isCompleted ? "completed" : "uncompleted"
-      } task: ${data.video?.title}`
-    );
 
     return NextResponse.json(data);
   } catch (error) {

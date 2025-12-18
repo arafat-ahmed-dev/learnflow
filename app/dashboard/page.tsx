@@ -8,10 +8,6 @@ import { EmptyState } from "@/components/empty-state"
 import { NotificationPermission } from "@/components/notification-permission"
 import { ReminderScheduler } from "@/components/reminder-scheduler"
 import { MotivationalBanner } from "@/components/motivational-banner"
-import { ConnectionStatus } from "@/components/connection-status"
-import { SocketInitializer } from "@/components/socket-initializer"
-import { RealtimeDashboard } from "@/components/realtime-dashboard"
-import { RealtimeNotifications } from "@/components/realtime-notifications"
 import type { Playlist, Routine, Task, Video } from "@/lib/types"
 
 export default async function DashboardPage() {
@@ -98,31 +94,45 @@ export default async function DashboardPage() {
   const todayTotalCount = todayTasks.length
 
   return (
-    <div className="min-h-screen bg-gradient-card">
-      <SocketInitializer />
-      <RealtimeNotifications userId={data.user.id} />
-      <DashboardHeader email={data.user.email || ""}>
-        <ConnectionStatus />
-      </DashboardHeader>
+    <div className="min-h-screen bg-muted/30">
+      <DashboardHeader email={data.user.email || ""} />
 
       <ReminderScheduler tasksForToday={todayTotalCount - todayCompletedCount} playlistTitle={todayPlaylistTitle} />
 
-      <main className="max-w-7xl mx-auto px-4 py-8">
-        <RealtimeDashboard
-          userId={data.user.id}
-          initialRoutines={typedRoutines}
-          initialTodayTasks={todayTasks}
-          initialStats={{
-            totalCompleted: completedTasks.length,
-            totalVideos: allTasks.length,
-            currentStreak: streak,
-            totalMinutesWatched
-          }}
-          todayCompletedCount={todayCompletedCount}
-          todayTotalCount={todayTotalCount}
-          playlistTitle={todayPlaylistTitle}
-          hasRoutines={hasRoutines}
-        />
+      <main className="max-w-6xl mx-auto px-4 py-8">
+        {hasRoutines ? (
+          <div className="space-y-6">
+            <NotificationPermission />
+
+            <MotivationalBanner completedToday={todayCompletedCount} totalToday={todayTotalCount} />
+
+            {/* Stats */}
+            <StatsCards
+              totalCompleted={completedTasks.length}
+              totalVideos={allTasks.length}
+              currentStreak={streak}
+              totalMinutesWatched={totalMinutesWatched}
+            />
+
+            {/* Today's Tasks */}
+            <section>
+              <h2 className="text-xl font-semibold mb-4">Today&apos;s Tasks</h2>
+              <TodayTasks tasks={todayTasks} playlistTitle={todayPlaylistTitle} />
+            </section>
+
+            {/* Active Routines */}
+            <section>
+              <h2 className="text-xl font-semibold mb-4">Your Learning Routines</h2>
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {typedRoutines.map((routine) => (
+                  <RoutineCard key={routine.id} routine={routine} />
+                ))}
+              </div>
+            </section>
+          </div>
+        ) : (
+          <EmptyState />
+        )}
       </main>
     </div>
   )

@@ -1,51 +1,9 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { generateObject } from "ai";
+import { google } from "@ai-sdk/google";
 import { z } from "zod";
 import type { YouTubePlaylistInfo, PlaylistPreferences } from "@/lib/types";
-
-// Fallback schedule creator for when AI is not available
-function createSimpleSchedule(
-  playlist: YouTubePlaylistInfo,
-  videosPerDay: number
-) {
-  const schedule = [];
-  const startDate = new Date();
-  let videoIndex = 0;
-
-  while (videoIndex < playlist.videos.length) {
-    const date = new Date(startDate);
-    date.setDate(startDate.getDate() + schedule.length);
-
-    const dayVideoIndices = [];
-    for (
-      let i = 0;
-      i < videosPerDay && videoIndex < playlist.videos.length;
-      i++
-    ) {
-      dayVideoIndices.push(videoIndex);
-      videoIndex++;
-    }
-
-    schedule.push({
-      date: date.toISOString().split("T")[0],
-      videoIndices: dayVideoIndices,
-      motivationalMessage:
-        "Keep learning and stay consistent! Every video brings you closer to your goal.",
-    });
-  }
-
-  return {
-    schedule,
-    tips: [
-      "Take notes while watching to improve retention",
-      "Practice what you learn by building small projects",
-      "Don't hesitate to pause and rewind if needed",
-      "Set up a distraction-free learning environment",
-      "Review previous lessons before starting new ones",
-    ],
-  };
-}
 
 const scheduleSchema = z.object({
   schedule: z.array(
@@ -79,46 +37,43 @@ export async function POST(req: Request) {
     const totalVideos = playlist.videos.length;
     const daysNeeded = Math.ceil(totalVideos / videosPerDay);
 
-    // Try to use AI to create an optimized learning schedule, fallback to simple schedule
+    // Use AI to create an optimized learning schedule
     let aiSchedule;
     try {
-      if (process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
-        const { object } = await generateObject({
-          model: "google/gemini-1.5-flash",
-          schema: scheduleSchema,
-          prompt: `Create an optimized learning schedule for a course with ${totalVideos} videos.
-          
-          Videos per day target: ${videosPerDay}
-          Total days needed: ${daysNeeded}
-          ${
-            preferences.targetCompletionDate
-              ? `Target completion: ${preferences.targetCompletionDate}`
-              : ""
-          }
-          
-          Video details (index, title, duration in seconds):
-          ${playlist.videos
-            .map((v, i) => `${i}: "${v.title}" (${v.durationSeconds}s)`)
-            .join("\n")}
-          
-          Create a day-by-day schedule starting from today. For each day, specify which video indices to watch.
-          Try to balance daily workload by grouping shorter videos together.
-          Include a short motivational message for each day.
-          Also provide 3-5 learning tips specific to this type of content.
-          
-          Return dates in YYYY-MM-DD format starting from today.`,
-        });
-        aiSchedule = object;
-        console.log("[Routine] Using AI-generated schedule");
-      } else {
-        throw new Error("No Google Gemini API key configured");
-      }
-    } catch (error) {
-      console.log(
-        "[Routine] AI scheduling failed, using simple schedule:",
-        error.message
+      const result = await generateObject({
+        model: google("gemini-1.5-flash-latest"), // Using correct Gemini model name
+        schema: scheduleSchema,
+        prompt: `Create an optimized learning schedule for a course with ${totalVideos} videos.
+        
+        Videos per day target: ${videosPerDay}
+        Total days needed: ${daysNeeded}
+        ${
+          preferences.targetCompletionDate
+            ? `Target completion: ${preferences.targetCompletionDate}`
+            : ""
+        }
+        
+        Video details (index, title, duration in seconds):
+        ${playlist.videos
+          .map((v, i) => `${i}: "${v.title}" (${v.durationSeconds}s)`)
+          .join("\n")}
+        
+        Create a day-by-day schedule starting from today. For each day, specify which video indices to watch.
+        Try to balance daily workload by grouping shorter videos together.
+        Include a short motivational message for each day.
+        Also provide 3-5 learning tips specific to this type of content.
+        
+        Return dates in YYYY-MM-DD format starting from today.`,
+      });
+      aiSchedule = result.object;
+    } catch (aiError) {
+      console.error("AI Gateway error:", aiError);
+      // Fallback: create a basic schedule without AI
+      aiSchedule = createFallbackSchedule(
+        totalVideos,
+        videosPerDay,
+        daysNeeded
       );
-      aiSchedule = createSimpleSchedule(playlist, videosPerDay);
     }
 
     // Save playlist to database
@@ -208,24 +163,64 @@ export async function POST(req: Request) {
     });
   } catch (error) {
     console.error("Error creating routine:", error);
-
-    // Provide more specific error messages
-    let errorMessage = "Failed to create routine";
-    if (error.message?.includes("duplicate key value")) {
-      errorMessage = "A routine for this playlist already exists";
-    } else if (error.message?.includes("violates foreign key")) {
-      errorMessage = "Database relationship error - please try again";
-    } else if (error.message?.includes("not authenticated")) {
-      errorMessage = "Authentication required";
-    }
-
     return NextResponse.json(
-      {
-        error: errorMessage,
-        details:
-          process.env.NODE_ENV === "development" ? error.message : undefined,
-      },
+      { error: "Failed to create routine" },
       { status: 500 }
     );
   }
+}
+
+// Fallback function to create a basic schedule without AI
+function createFallbackSchedule(
+  totalVideos: number,
+  videosPerDay: number,
+  daysNeeded: number
+) {
+  const schedule = [];
+  const tips = [
+    "Take breaks between videos to process the information",
+    "Take notes on key concepts as you watch",
+    "Try to apply what you learn immediately",
+    "Review previous videos if concepts build on each other",
+    "Set a consistent time each day for your learning routine",
+  ];
+
+  const today = new Date();
+  let videoIndex = 0;
+
+  for (let day = 0; day < daysNeeded; day++) {
+    const currentDate = new Date(today);
+    currentDate.setDate(today.getDate() + day);
+    const dateStr = currentDate.toISOString().split("T")[0];
+
+    const videoIndices = [];
+    for (let i = 0; i < videosPerDay && videoIndex < totalVideos; i++) {
+      videoIndices.push(videoIndex++);
+    }
+
+    const dayNumber = day + 1;
+    const motivationalMessages = [
+      "Great start! Every expert was once a beginner.",
+      "Keep up the momentum! Consistency is key to mastery.",
+      "You're making real progress! Knowledge compounds daily.",
+      "Halfway there! Your dedication is paying off.",
+      "Final stretch! You're so close to completing this journey!",
+    ];
+
+    const messageIndex = Math.floor(
+      (day / daysNeeded) * motivationalMessages.length
+    );
+    const motivationalMessage =
+      motivationalMessages[
+        Math.min(messageIndex, motivationalMessages.length - 1)
+      ];
+
+    schedule.push({
+      date: dateStr,
+      videoIndices,
+      motivationalMessage,
+    });
+  }
+
+  return { schedule, tips };
 }
