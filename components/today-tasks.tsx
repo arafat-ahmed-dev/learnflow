@@ -1,13 +1,10 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Progress } from "@/components/ui/progress"
-import { ExternalLink, Clock, CheckCircle2, Play, Trophy, Star } from "lucide-react"
-import { useSocket } from "@/lib/socket-context"
+import { ExternalLink, Clock, CheckCircle2 } from "lucide-react"
 import type { Task } from "@/lib/types"
 import { toast } from "@/hooks/use-toast"
 
@@ -26,30 +23,9 @@ function formatDuration(seconds: number): string {
 export function TodayTasks({ tasks: initialTasks, playlistTitle }: TodayTasksProps) {
   const [tasks, setTasks] = useState(initialTasks)
   const [loadingId, setLoadingId] = useState<string | null>(null)
-  const { socket, updateTaskStatus } = useSocket()
 
   const completedCount = tasks.filter((t) => t.is_completed).length
   const totalCount = tasks.length
-  const progressPercentage = totalCount > 0 ? (completedCount / totalCount) * 100 : 0
-
-  useEffect(() => {
-    if (!socket) return
-
-    // Listen for real-time task updates
-    socket.on("task-status-change", (data: { taskId: string; completed: boolean; timestamp: string }) => {
-      setTasks((prev) =>
-        prev.map((task) =>
-          task.id === data.taskId
-            ? { ...task, is_completed: data.completed, completed_at: data.completed ? data.timestamp : null }
-            : task
-        )
-      )
-    })
-
-    return () => {
-      socket.off("task-status-change")
-    }
-  }, [socket])
 
   const handleToggle = async (taskId: string, currentStatus: boolean) => {
     setLoadingId(taskId)
@@ -63,9 +39,6 @@ export function TodayTasks({ tasks: initialTasks, playlistTitle }: TodayTasksPro
 
       if (!response.ok) throw new Error("Failed to update task")
 
-      const updatedTask = await response.json()
-
-      // Update local state immediately
       setTasks((prev) =>
         prev.map((t) =>
           t.id === taskId
@@ -74,16 +47,8 @@ export function TodayTasks({ tasks: initialTasks, playlistTitle }: TodayTasksPro
         ),
       )
 
-      // Emit socket event for real-time updates
-      if (socket) {
-        updateTaskStatus(taskId, !currentStatus, updatedTask.user_id)
-      }
-
       if (!currentStatus) {
-        toast({
-          title: "🎉 Awesome! Task completed!",
-          description: "Keep up the great work!"
-        })
+        toast({ title: "Great job! Task completed!" })
       }
     } catch {
       toast({ title: "Failed to update task", variant: "destructive" })
@@ -94,69 +59,43 @@ export function TodayTasks({ tasks: initialTasks, playlistTitle }: TodayTasksPro
 
   if (tasks.length === 0) {
     return (
-      <Card className="border-dashed border-2 border-muted-foreground/25">
-        <CardContent className="py-16 text-center">
-          <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-linear-to-br from-accent/20 to-primary/20 flex items-center justify-center">
-            <CheckCircle2 className="w-10 h-10 text-accent" />
-          </div>
-          <h3 className="font-semibold text-xl mb-3">All caught up! 🎉</h3>
-          <p className="text-muted-foreground max-w-sm mx-auto">You've completed all your tasks for today. Take a moment to celebrate your progress!</p>
-          <div className="mt-6">
-            <Badge variant="outline" className="bg-accent/10">
-              <Trophy className="w-3 h-3 mr-1" />
-              Day Complete
-            </Badge>
-          </div>
+      <Card>
+        <CardContent className="py-12 text-center">
+          <CheckCircle2 className="w-12 h-12 mx-auto text-accent mb-4" />
+          <h3 className="font-semibold text-lg mb-2">No tasks for today!</h3>
+          <p className="text-muted-foreground">You&apos;re all caught up. Enjoy your day!</p>
         </CardContent>
       </Card>
     )
   }
 
   return (
-    <Card className="card-enhanced overflow-hidden border-l-4 border-l-primary">
-      <CardHeader className="pb-4 bg-gradient-header">
+    <Card>
+      <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-primary/10 rounded-lg">
-              <Play className="w-5 h-5 text-primary" />
+          <CardTitle className="text-lg">Today&apos;s Learning</CardTitle>
+          <div className="flex items-center gap-2 text-sm">
+            <span className="text-muted-foreground">
+              {completedCount}/{totalCount} completed
+            </span>
+            <div className="w-24 h-2 bg-muted rounded-full overflow-hidden">
+              <div
+                className="h-full bg-primary transition-all duration-300"
+                style={{ width: `${(completedCount / totalCount) * 100}%` }}
+              />
             </div>
-            <div>
-              <CardTitle className="text-xl flex items-center gap-2">
-                Today's Learning
-                {completedCount === totalCount && totalCount > 0 && (
-                  <Badge className="bg-green-500 hover:bg-green-600">
-                    <Star className="w-3 h-3 mr-1" />
-                    Complete!
-                  </Badge>
-                )}
-              </CardTitle>
-              <p className="text-sm text-muted-foreground mt-1">{playlistTitle}</p>
-            </div>
-          </div>
-          <div className="text-right">
-            <div className="text-2xl font-bold text-primary">
-              {completedCount}<span className="text-lg text-muted-foreground">/{totalCount}</span>
-            </div>
-            <p className="text-xs text-muted-foreground">tasks done</p>
           </div>
         </div>
-        <div className="mt-4 space-y-2">
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-muted-foreground">Progress</span>
-            <span className="font-medium">{Math.round(progressPercentage)}%</span>
-          </div>
-          <Progress value={progressPercentage} className="h-3" />
-        </div>
+        <p className="text-sm text-muted-foreground">{playlistTitle}</p>
       </CardHeader>
-      <CardContent className="p-6">
-        <div className="space-y-4">
-          {tasks.map((task, index) => (
+      <CardContent>
+        <div className="space-y-3">
+          {tasks.map((task) => (
             <div
               key={task.id}
-              className={`group relative flex items-center gap-4 p-4 rounded-xl border-2 transition-all duration-300 hover:scale-[1.02] ${task.is_completed
-                ? "task-completed"
-                : "task-pending"
-                }`}
+              className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${
+                task.is_completed ? "bg-accent/30 border-accent" : "bg-card border-border hover:border-primary/50"
+              }`}
             >
               <Checkbox
                 checked={task.is_completed}

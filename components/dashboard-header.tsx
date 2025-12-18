@@ -15,10 +15,9 @@ import { useRouter } from "next/navigation"
 
 interface DashboardHeaderProps {
   email: string
-  children?: React.ReactNode
 }
 
-export function DashboardHeader({ email, children }: DashboardHeaderProps) {
+export function DashboardHeader({ email }: DashboardHeaderProps) {
   const router = useRouter()
 
   const handleSignOut = async () => {
@@ -38,8 +37,6 @@ export function DashboardHeader({ email, children }: DashboardHeaderProps) {
         </Link>
 
         <div className="flex items-center gap-3">
-          {children}
-
           <Link href="/dashboard/new">
             <Button size="sm" className="gap-2">
               <Plus className="w-4 h-4" />
